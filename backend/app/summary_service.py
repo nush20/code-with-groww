@@ -104,11 +104,17 @@ class TemplateSummaryProvider:
         hidden = facts["market_facts"]["is_hidden_journey"]
         levels = facts["personal_facts"]["watch_levels_reached"]
 
-        if levels:
+        almost_complete_reversal = reversal >= 90
+        if almost_complete_reversal:
+            headline = (
+                "The temporary rise was almost completely erased"
+                if direction == "up" else "The temporary decline was almost fully recovered"
+            )
+        elif unusual is not None:
+            headline = f"{facts['symbol']} moved unusually far while you were away"
+        elif levels:
             formatted = ", ".join(f"₹{level:,.2f}" for level in levels)
             headline = f"Your {formatted} price alert was reached"
-        elif unusual is not None:
-            headline = "A larger-than-usual price move happened"
         elif hidden:
             headline = "A temporary price move was easy to miss"
         else:
@@ -116,14 +122,37 @@ class TemplateSummaryProvider:
 
         market = facts["market_facts"]
         if all(market.get(key) is not None for key in ("baseline_price", "excursion_price", "latest_price")):
-            first_verb = "climbed" if direction == "up" else "fell"
-            second_verb = "fell back" if direction == "up" else "recovered"
-            effect = "temporary rise disappeared" if direction == "up" else "decline was recovered"
-            summary = (
-                f"{facts['symbol']} {first_verb} from ₹{market['baseline_price']:,.2f} to "
-                f"₹{market['excursion_price']:,.2f}, then {second_verb} to ₹{market['latest_price']:,.2f}. "
-                f"That means {reversal:.0f}% of the {effect}."
-            )
+            start = f"₹{market['baseline_price']:,.2f}"
+            extreme = f"₹{market['excursion_price']:,.2f}"
+            latest = f"₹{market['latest_price']:,.2f}"
+            if almost_complete_reversal:
+                move = "rally" if direction == "up" else "drop"
+                outcome = "gave it all back" if reversal >= 99 and direction == "up" else (
+                    "recovered all of it" if reversal >= 99 else f"reversed {reversal:.0f}% of it"
+                )
+                summary = f"{facts['symbol']} made a brief {move} from {start} to {extreme}, then {outcome} and was last seen at {latest}."
+            elif unusual is not None:
+                move = "rose" if direction == "up" else "fell"
+                finish = "eased" if direction == "up" else "recovered"
+                summary = (
+                    f"{facts['symbol']} {move} from {start} to {extreme}—an excursion {unusual:.1f}× larger than expected "
+                    f"for this window—then {finish} to {latest}."
+                )
+            elif levels:
+                move = "climbed" if direction == "up" else "fell"
+                return_word = "pulled back" if direction == "up" else "recovered"
+                summary = (
+                    f"{facts['symbol']} crossed your alert while it {move} from {start} to {extreme}. "
+                    f"It later {return_word} to {latest}, leaving {reversal:.0f}% of the move reversed."
+                )
+            else:
+                first_verb = "climbed" if direction == "up" else "fell"
+                second_verb = "fell back" if direction == "up" else "recovered"
+                effect = "rise later faded" if direction == "up" else "decline was later recovered"
+                summary = (
+                    f"{facts['symbol']} {first_verb} from {start} to {extreme}, then {second_verb} to {latest}; "
+                    f"{reversal:.0f}% of the {effect}."
+                )
         else:
             summary = (
                 f"{facts['symbol']} moved {'up' if direction == 'up' else 'down'} {excursion:.2f}% before "
@@ -177,8 +206,8 @@ class GeminiSummaryProvider:
         if cache_key in self._cache:
             return self._cache[cache_key]
         task_rules = (
-            "For Catch-Up, make the headline prioritize a personal watch level, then unusualness, then a hidden round trip. "
-            "Keep summary to one sentence describing the price journey; do not repeat news or the reasons list."
+            "For Catch-Up, make each result distinctive by prioritizing an almost-complete reversal, then unusualness, then a personal watch level. "
+            "Keep the summary to one or two short sentences describing the most distinctive part of the price journey; do not repeat news or the reasons list."
             if facts.get("summary_kind") == "catchup" else
             "For Market Recap, describe the full selected period in no more than two sentences and emphasize its distinctive price path."
         )

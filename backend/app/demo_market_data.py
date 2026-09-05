@@ -64,16 +64,50 @@ def _combined_replay(raw: dict, scenario: dict) -> dict:
     }
 
 
+def _multi_day_replay(raw: dict) -> dict:
+    """Build a three-session absence from existing immutable Upstox inputs."""
+    history = [_candle(candle) for candle in raw["historical_daily_candles"]]
+    journey = [_candle(candle) for candle in raw["journey_candles"]]
+    checkpoint = history[-2]
+    development = raw.get("development")
+    return {
+        "item": SimpleNamespace(
+            instrument_key=raw["instrument_key"], symbol=raw["symbol"],
+            company_name=raw["company_name"],
+        ),
+        "baseline_price": checkpoint["close"],
+        "baseline_time": checkpoint["timestamp"].replace(hour=15, minute=30),
+        "candles": [history[-1], *journey],
+        "daily_candles": history[:-2],
+        "latest": {
+            "price": journey[-1]["close"],
+            "market_timestamp": journey[-1]["timestamp"],
+            "is_stale": False,
+        },
+        "levels": [SimpleNamespace(**raw["watch_level"], instrument_key=raw["instrument_key"])],
+        "developments": [{**development, "published_at": _timestamp(development["published_at"])}] if development else [],
+        "scenario": {
+            "id": "pinelabs-three-session",
+            "name": "Three-session absence",
+            "description": "The checkpoint stayed unchanged across three trading sessions before Catch-Up was opened.",
+        },
+    }
+
+
 def replay_examples() -> list[dict]:
     """Load every real-market combined-signal example for the demo gallery."""
     examples = []
     for path in EXAMPLE_FIXTURE_PATHS:
         raw = json.loads(path.read_text())
-        examples.append(_combined_replay(raw, {
+        replay = _combined_replay(raw, {
             "id": raw["symbol"].casefold(),
             "name": f"{raw['company_name']} Catch-Up",
             "description": "A replayed personal watch level and a hidden journey occurred in the same historical session.",
-        }))
+        })
+        if raw["symbol"] == "INFOBEAN":
+            replay["levels"] = []
+            replay["scenario"]["description"] = "An unusual market move occurred without a personal alert."
+        examples.append(replay)
     return examples
 
 

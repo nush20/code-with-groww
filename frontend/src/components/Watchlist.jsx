@@ -5,12 +5,27 @@ import StockCard from './StockCard.jsx';
 
 const signed = value => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 const shortDate = value => new Intl.DateTimeFormat(undefined, {month:'short', day:'numeric', timeZone:'Asia/Kolkata'}).format(new Date(`${value}T12:00:00+05:30`));
-
 function DailyOverview({data}) {
   const [expanded, setExpanded] = useState(false);
   if (!data?.watchlist_impact) return null;
   const impact = data.watchlist_impact;
   const developments = data.daily_developments?.developments || [];
+  const sectorBySymbol = Object.fromEntries((data.market_overview || []).map(stock => [stock.symbol, stock.sector]));
+  const sectorRows = Object.values((data.market_overview || []).reduce((groups, stock) => {
+    const name = stock.sector || 'Other';
+    const group = groups[name] || {name, count:0, total:0, up:0, down:0};
+    group.count += 1; group.total += stock.return_pct;
+    if (stock.return_pct > 0) group.up += 1;
+    if (stock.return_pct < 0) group.down += 1;
+    groups[name] = group;
+    return groups;
+  }, {})).map(group => ({...group, average:group.total / group.count}))
+    .sort((a, b) => b.count - a.count || Math.abs(b.average) - Math.abs(a.average));
+  const developmentGroups = Object.entries(developments.reduce((groups, item) => {
+    const sector = sectorBySymbol[item.symbols?.[0]] || 'Other';
+    (groups[sector] ||= []).push(item);
+    return groups;
+  }, {}));
   const leading = [impact.largest_gainer, impact.largest_decliner].filter(Boolean)
     .sort((a, b) => Math.abs(b.return_pct) - Math.abs(a.return_pct))[0];
   return <section className="smart-daily-card">
@@ -21,9 +36,16 @@ function DailyOverview({data}) {
       {leading && <div className="daily-leading"><small>Largest move</small><strong>{leading.symbol}</strong><span className={leading.return_pct >= 0 ? 'positive' : 'negative'}>{signed(leading.return_pct)}</span></div>}
       <div className="daily-development-count"><strong>{developments.length}</strong><span>{developments.length === 1 ? 'company development' : 'company developments'}</span></div>
     </div>
-    {!!developments.length && <button type="button" className="daily-toggle" onClick={() => setExpanded(value => !value)}>{expanded ? 'Hide today’s activity' : 'View today’s activity'} <span aria-hidden="true">{expanded ? '↑' : '↓'}</span></button>}
+    {!!sectorRows.length && <section className="sector-overview" aria-label="Watchlist sectors">
+      <div><strong>Your sectors today</strong><span>Equal-weight movement within your watchlist</span></div>
+      <div className="sector-strip">{sectorRows.map(sector => <article key={sector.name}>
+        <span>{sector.name}</span><strong className={sector.average >= 0 ? 'positive' : 'negative'}>{signed(sector.average)}</strong>
+        <small>{sector.count} {sector.count === 1 ? 'company' : 'companies'} · {sector.up} up · {sector.down} down</small>
+      </article>)}</div>
+    </section>}
+    {!!developments.length && <button type="button" className={`daily-toggle ${expanded ? 'expanded' : ''}`} onClick={() => setExpanded(value => !value)}><span className="daily-toggle-icon" aria-hidden="true">✦</span><span>{expanded ? 'Hide today’s activity' : 'View today’s activity'}<small>{developments.length} source-backed {developments.length === 1 ? 'development' : 'developments'}</small></span><b aria-hidden="true">{expanded ? '↑' : '↓'}</b></button>}
     {expanded && <div className="daily-activity-list">
-      {developments.map(item => <article key={item.id}><div>{item.symbols.map(symbol => <span key={symbol}>{symbol}</span>)}<time>{new Intl.DateTimeFormat(undefined, {hour:'numeric', minute:'2-digit'}).format(new Date(item.published_at))}</time></div><h3>{item.headline}</h3>{item.summary && <p>{item.summary}</p>}<footer><span>{item.source_name}</span>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">View source ↗</a>}</footer></article>)}
+      {developmentGroups.map(([sector, items]) => <section className="sector-news-group" key={sector}><h3>{sector}<span>{items.length} {items.length === 1 ? 'development' : 'developments'}</span></h3>{items.map(item => <article key={item.id}><div>{item.symbols.map(symbol => <span key={symbol}>{symbol}</span>)}<time>{new Intl.DateTimeFormat(undefined, {hour:'numeric', minute:'2-digit'}).format(new Date(item.published_at))}</time></div><h3>{item.headline}</h3>{item.summary && <p>{item.summary}</p>}<footer><span>{item.source_name}</span>{item.source_url && <a href={item.source_url} target="_blank" rel="noreferrer">View source ↗</a>}</footer></article>)}</section>)}
       <p className="activity-context-note">Developments are relevant context and are not claimed causes of price movements.</p>
     </div>}
     {data.period?.end_date && <p className="daily-date">Latest trading session · {shortDate(data.period.end_date)}</p>}
@@ -46,10 +68,14 @@ export default function Watchlist({onOpenCatchUp, onViewStock}) {
   }, []);
 
   useEffect(() => {
+    if (loading || stocks.length === 0) {
+      setDaily(null);
+      return undefined;
+    }
     let active = true;
     getMarketRecap('1D').then(result => active && setDaily(result)).catch(() => {});
     return () => { active = false; };
-  }, []);
+  }, [loading, stocks.length]);
 
   async function add(values, watchLevel) {
     setError(''); setBusy(true);
@@ -61,7 +87,7 @@ export default function Watchlist({onOpenCatchUp, onViewStock}) {
           const createdLevel = await addWatchLevel({instrument_key: created.instrument_key, symbol: created.symbol, ...watchLevel});
           setWatchLevels(current => [...current, createdLevel]);
         } catch {
-          setError(`${created.symbol} was added, but its price alert couldn’t be saved.`);
+          setError(`${created.symbol} was added, but its alert couldn’t be saved.`);
         }
       }
       return true;
@@ -85,16 +111,16 @@ export default function Watchlist({onOpenCatchUp, onViewStock}) {
 
   return <main>
     <section className="watchlist-heading smart-watchlist-heading">
-      <div><p className="eyebrow">YOUR SMART WATCHLIST</p><h1>Your watchlist</h1><p>Live market information, personal price alerts, and the changes that matter.</p></div>
-      <button type="button" className="catchup-primary" onClick={onOpenCatchUp}><span aria-hidden="true">✦</span><span><strong>Catch me up</strong><small>See what happened since your last check</small></span></button>
+      <div><h1>Your watchlist</h1><p>{!loading && stocks.length === 0 ? 'Add companies you care about to build your personal market view.' : 'Live market information, personal alerts, and the changes that matter.'}</p></div>
+      {!loading && stocks.length > 0 && <button type="button" className="catchup-primary" onClick={onOpenCatchUp}><span aria-hidden="true">✦</span><span><strong>Catch me up</strong><small>See what happened since your last check</small></span></button>}
     </section>
-    <DailyOverview data={daily}/>
     <AddStock onAdd={add} busy={busy} existingSymbols={stocks.map(stock => stock.symbol)} />
     {error && <p className="error" role="alert">{error}</p>}
+    {!loading && stocks.length > 0 && <DailyOverview data={daily}/>}
     <section className="saved-watchlist" aria-busy={loading}>
       <div className="section-title"><h2>Your Watchlist</h2>{!loading && <span>{stocks.length} {stocks.length === 1 ? 'stock' : 'stocks'}</span>}</div>
       {loading ? <div className="stock-grid" aria-label="Loading watchlist">{[1, 2, 3, 4].map(item => <div className="stock-card skeleton-card" key={item}><span/><span/><span/><div><i/><i/><i/></div></div>)}</div>
-        : stocks.length === 0 ? <div className="empty-state"><h3>Your watchlist is empty</h3><p>Search for a company above to start following it.</p></div>
+        : stocks.length === 0 ? <div className="empty-state"><h3>Add your first company</h3><p>Use the box above to search by company name. Your daily overview and Catch-Up will appear here after you add one.</p></div>
         : <div className="stock-grid">{stocks.map(stock => <StockCard key={stock.id} stock={stock} watchLevels={watchLevels.filter(level => level.instrument_key === stock.instrument_key)} onRemove={remove} onView={onViewStock} busy={busy} />)}</div>}
     </section>
   </main>;

@@ -34,9 +34,11 @@ export default function StockCard({stock, watchLevels = [], onRemove, onView, bu
         {stock.market.is_stale ? 'Delayed · ' : ''}Updated {age(stock.market.market_timestamp)}
       </p>
     </> : <p className="market-error">Market data temporarily unavailable.</p>}
-    {!!watchLevels.length && <div className="stock-watch-levels" aria-label={`${stock.symbol} price alerts`}>
-      <strong>Your price alert</strong>
-      {watchLevels.map(level => <span key={level.id}>{level.direction === 'ABOVE' ? '↑ Above' : '↓ Below'} {money(level.target_price)}</span>)}
+    {!!watchLevels.length && <div className="stock-watch-levels" aria-label={`${stock.symbol} alerts`}>
+      <strong>Your alert</strong>
+      {watchLevels.map(level => <span key={level.id}>{level.alert_type === 'PERCENT'
+        ? `${level.direction === 'ABOVE' ? '↑ Up' : '↓ Down'} ${Number(level.target_percent).toFixed(2).replace(/\.00$/, '')}%`
+        : `${level.direction === 'ABOVE' ? '↑ Above' : '↓ Below'} ${money(level.target_price)}`}</span>)}
     </div>}
     <span className="open-stock">View stock <span aria-hidden="true">→</span></span>
   </article>;

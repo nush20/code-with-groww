@@ -1,5 +1,6 @@
 import {useState} from 'react';
-import {continueAsDemo, logIn, signUp} from '../api.js';
+import {logIn, signUp} from '../api.js';
+import BrandMark from './BrandMark.jsx';
 
 export default function Auth({onAuthenticated}) {
   const [mode, setMode] = useState('login');
@@ -17,15 +18,8 @@ export default function Auth({onAuthenticated}) {
     finally { setBusy(false); }
   }
 
-  async function demo() {
-    setBusy(true); setError('');
-    try { onAuthenticated(await continueAsDemo()); }
-    catch (error) { setError(error.message); }
-    finally { setBusy(false); }
-  }
-
   return <main className="auth-page">
-    <section className="auth-intro"><div className="auth-logo" aria-hidden="true">↗</div><h1>MarketMemo</h1><p>Your watchlist remembers what you missed.</p></section>
+    <section className="auth-intro"><BrandMark className="auth-logo"/><h1>MarketMemo</h1></section>
     <section className="auth-card">
       <div className="auth-tabs" role="tablist"><button className={mode === 'login' ? 'active' : ''} onClick={() => {setMode('login');setError('');}}>Log in</button><button className={mode === 'signup' ? 'active' : ''} onClick={() => {setMode('signup');setError('');}}>Sign up</button></div>
       <h2>{mode === 'login' ? 'Welcome back' : 'Create your account'}</h2>
@@ -37,9 +31,6 @@ export default function Auth({onAuthenticated}) {
         {error && <p className="auth-error" role="alert">{error}</p>}
         <button className="auth-primary" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}</button>
       </form>
-      <div className="auth-divider"><span>or</span></div>
-      <button className="auth-demo" onClick={demo} disabled={busy}>Continue as demo</button>
-      <small>Demo mode uses the existing shared hackathon watchlist.</small>
     </section>
   </main>;
 }

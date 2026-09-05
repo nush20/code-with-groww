@@ -4,6 +4,7 @@ import Auth from './components/Auth.jsx';
 import CatchUp from './components/CatchUp.jsx';
 import Watchlist from './components/Watchlist.jsx';
 import StockDetail from './components/StockDetail.jsx';
+import BrandMark from './components/BrandMark.jsx';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -20,7 +21,7 @@ export default function App() {
   if (checkingAuth) return <div className="auth-loading">Opening MarketMemo…</div>;
   if (!user) return <div className="app-shell auth-shell"><Auth onAuthenticated={setUser}/></div>;
   return <div className="app-shell">
-    <header><div className="header-inner"><div><div className="brand">MarketMemo</div><p>Your watchlist remembers what you missed.</p></div>
+    <header><div className="header-inner"><div className="brand"><BrandMark className="brand-mark"/><span>MarketMemo</span></div>
       <div className="account-menu"><span>{user.name}</span><button onClick={logout}>Log out</button></div>
     </div></header>
     {view === 'watchlist' ? <Watchlist onOpenCatchUp={() => setView('catchup')} onViewStock={openDetail} />

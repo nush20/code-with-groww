@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class AuthSignup(BaseModel):
@@ -42,6 +42,7 @@ class WatchlistCreate(BaseModel):
     symbol: str = Field(min_length=1, max_length=30)
     company_name: str = Field(min_length=1, max_length=200)
     instrument_key: str = Field(min_length=1, max_length=120)
+    sector: Optional[str] = Field(default=None, max_length=80)
 
     @field_validator("symbol", "company_name", "instrument_key")
     @classmethod
@@ -72,6 +73,7 @@ class StockSearchResult(BaseModel):
     company_name: str
     exchange: str
     instrument_key: str
+    sector: str = "Other"
 
 
 class WatchlistItemOut(BaseModel):
@@ -81,6 +83,7 @@ class WatchlistItemOut(BaseModel):
     symbol: str
     company_name: str
     instrument_key: Optional[str] = None
+    sector: str = "Other"
     created_at: datetime
     market: Optional[MarketDataOut] = None
     market_error: Optional[str] = None
@@ -146,6 +149,9 @@ class WatchLevelEventOut(BaseModel):
     event_type: str
     level_id: int
     target_price: float
+    alert_type: Literal["PRICE", "PERCENT"] = "PRICE"
+    target_percent: Optional[float] = None
+    reference_price: Optional[float] = None
     direction: str
     event_candle_time: datetime
     event_candle_high: float
@@ -177,8 +183,18 @@ class CatchupContextOut(BaseModel):
 class WatchLevelCreate(BaseModel):
     instrument_key: str = Field(min_length=1, max_length=120)
     symbol: str = Field(min_length=1, max_length=30)
-    target_price: float = Field(gt=0)
+    alert_type: Literal["PRICE", "PERCENT"] = "PRICE"
+    target_price: Optional[float] = Field(default=None, gt=0)
+    target_percent: Optional[float] = Field(default=None, gt=0, lt=100)
     direction: Literal["ABOVE", "BELOW"]
+
+    @model_validator(mode="after")
+    def validate_alert_value(self):
+        if self.alert_type == "PRICE" and self.target_price is None:
+            raise ValueError("target_price is required for a price alert")
+        if self.alert_type == "PERCENT" and self.target_percent is None:
+            raise ValueError("target_percent is required for a percentage alert")
+        return self
 
     @field_validator("instrument_key", "symbol")
     @classmethod
@@ -201,6 +217,9 @@ class WatchLevelOut(BaseModel):
     instrument_key: str
     symbol: str
     target_price: float
+    alert_type: str = "PRICE"
+    target_percent: Optional[float] = None
+    reference_price: Optional[float] = None
     direction: str
     active: bool
     created_at: datetime
@@ -223,6 +242,7 @@ class HiddenJourneyEventOut(BaseModel):
     watch_level_events: list[WatchLevelEventOut] = Field(default_factory=list)
     context: CatchupContextOut = Field(default_factory=lambda: CatchupContextOut(status="NONE"))
     data_freshness: DataFreshnessOut
+    replay_label: Optional[str] = None
 
 
 class CatchupOut(BaseModel):
@@ -316,6 +336,7 @@ class WatchlistPeriodStockOut(BaseModel):
     instrument_key: str
     symbol: str
     company_name: str
+    sector: str = "Other"
     return_pct: float
     high: float
     low: float

@@ -213,6 +213,20 @@ class CatchupSummaryTests(unittest.TestCase):
         for forbidden in ("caused", "drove", "reacted positively", "because"):
             self.assertNotIn(forbidden, summary.casefold())
 
+    def test_catchup_wording_changes_with_the_strongest_signal(self):
+        provider = TemplateSummaryProvider()
+        base = self.facts()
+        base["market_facts"].update({
+            "baseline_price": 100, "excursion_price": 108, "latest_price": 102,
+        })
+        alert = provider.generate({**base, "market_facts": {**base["market_facts"], "reversal_pct": 64, "significance_multiple": None}})
+        unusual = provider.generate({**base, "market_facts": {**base["market_facts"], "reversal_pct": 62, "significance_multiple": 2.7}})
+        reversed_move = provider.generate({**base, "market_facts": {**base["market_facts"], "reversal_pct": 100, "significance_multiple": None}})
+        self.assertEqual(len({alert["headline"], unusual["headline"], reversed_move["headline"]}), 3)
+        self.assertIn("crossed your alert", alert["summary"])
+        self.assertIn("2.7×", unusual["summary"])
+        self.assertIn("gave it all back", reversed_move["summary"])
+
     def test_summary_without_development_invents_nothing(self):
         summary = TemplateSummaryProvider().generate(self.facts(context=False))["summary"]
         self.assertNotIn("development", summary.casefold())

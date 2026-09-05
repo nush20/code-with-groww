@@ -100,6 +100,21 @@ class WatchLevelPersistenceTests(unittest.TestCase):
             self.create(target=110)
         self.assertEqual(caught.exception.status_code, 409)
 
+    def test_create_percentage_alert_uses_current_price_as_reference(self):
+        body = WatchLevelCreate(instrument_key="NSE_EQ|TEST", symbol="TEST", alert_type="PERCENT", target_percent=5, direction="ABOVE")
+        with patch("backend.app.main.fetch_latest_quote", return_value={"price": 100}):
+            created = create_watch_level(body, self.db)
+        self.assertEqual(created.alert_type, "PERCENT")
+        self.assertEqual(created.reference_price, 100)
+        self.assertEqual(created.target_percent, 5)
+        self.assertEqual(created.target_price, 105)
+
+    def test_create_down_percentage_alert_calculates_lower_target(self):
+        body = WatchLevelCreate(instrument_key="NSE_EQ|TEST", symbol="TEST", alert_type="PERCENT", target_percent=4, direction="BELOW")
+        with patch("backend.app.main.fetch_latest_quote", return_value={"price": 250}):
+            created = create_watch_level(body, self.db)
+        self.assertEqual(created.target_price, 240)
+
     def test_above_and_below_can_coexist(self):
         self.create("ABOVE", 105); self.create("BELOW", 95)
         self.assertEqual(self.db.scalar(select(func.count()).select_from(WatchLevel)), 2)
@@ -111,6 +126,10 @@ class WatchLevelPersistenceTests(unittest.TestCase):
             WatchLevelCreate(instrument_key="NSE_EQ|TEST", symbol="TEST", target_price=100, direction="SIDEWAYS")
         with self.assertRaises(ValidationError):
             WatchLevelCreate(instrument_key="   ", symbol="TEST", target_price=100, direction="ABOVE")
+        with self.assertRaises(ValidationError):
+            WatchLevelCreate(instrument_key="NSE_EQ|TEST", symbol="TEST", alert_type="PERCENT", direction="ABOVE")
+        with self.assertRaises(ValidationError):
+            WatchLevelCreate(instrument_key="NSE_EQ|TEST", symbol="TEST", alert_type="PERCENT", target_percent=101, direction="ABOVE")
 
     def test_delete_level_and_missing_level(self):
         created = self.create()

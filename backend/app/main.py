@@ -23,6 +23,7 @@ from .schemas import AuthLogin, AuthSignup, AuthUserOut, CatchupMarkOut, Catchup
 from .market_data import MarketDataError, NSE_TIMEZONE, PROVIDER_ERROR, SEARCH_ERROR, fetch_completed_daily_candles, fetch_intraday_candles, fetch_latest_quote, fetch_recent_session_candles, search_stocks
 from .market_recap import RANGE_LABELS, RANGE_LOOKBACK_DAYS, analyze_period, meaningful_move_threshold
 from .summary_service import classify_analysis, summary_service
+from .sector_metadata import sector_for
 
 
 app = FastAPI(title="MarketMemo API")
@@ -145,6 +146,22 @@ def create_tables() -> None:
                 connection.execute(text(
                     "ALTER TABLE watchlist_items ADD COLUMN instrument_key VARCHAR(120)"
                 ))
+        if "sector" not in columns:
+            with engine.begin() as connection:
+                connection.execute(text(
+                    "ALTER TABLE watchlist_items ADD COLUMN sector VARCHAR(80) NOT NULL DEFAULT 'Other'"
+                ))
+    if "watch_levels" in inspect(engine).get_table_names():
+        columns = {column["name"] for column in inspect(engine).get_columns("watch_levels")}
+        additions = {
+            "alert_type": "VARCHAR(12) NOT NULL DEFAULT 'PRICE'",
+            "target_percent": "FLOAT",
+            "reference_price": "FLOAT",
+        }
+        with engine.begin() as connection:
+            for name, definition in additions.items():
+                if name not in columns:
+                    connection.execute(text(f"ALTER TABLE watch_levels ADD COLUMN {name} {definition}"))
 
 
 @app.get("/health")
@@ -429,11 +446,12 @@ def get_catchup_demo(scenario: Literal["combined", "hidden-reversal", "personal-
             replay["levels"],
         )
         if event:
-            events.append(enrich_catchup_context(
+            enriched = enrich_catchup_context(
                 event,
                 replay["developments"],
                 "AVAILABLE" if replay["developments"] else "NONE",
-            ))
+            )
+            events.append(enriched)
     replay = replays[0]
     return {
         "mode": "demo",
@@ -447,7 +465,7 @@ def get_catchup_demo(scenario: Literal["combined", "hidden-reversal", "personal-
         "events": events,
         "demo": {
             "label": "HISTORICAL REPLAY · REAL MARKET DATA",
-            "description": "Three complete Catch-Up examples use actual historical Upstox candles. Only each checkpoint and watch level are replayed user state.",
+            "description": "Three Catch-Up examples use actual historical Upstox candles. Only each checkpoint and watch level are replayed user state.",
             "scenario": replay["scenario"],
             "path": [
                 replay["baseline_price"],
@@ -636,6 +654,7 @@ def get_market_recap(
             "instrument_key": item.instrument_key,
             "symbol": item.symbol,
             "company_name": item.company_name,
+            "sector": sector_for(item.symbol, item.sector),
             "return_pct": round(metrics["session_return_pct"], 2),
             "high": round(metrics["high"], 2),
             "low": round(metrics["low"], 2),
@@ -865,10 +884,23 @@ def create_watch_level(body: WatchLevelCreate, db: Session = Depends(get_db)):
     ))
     if item is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Stock is not in your watchlist")
+    target_price = body.target_price
+    reference_price = None
+    if body.alert_type == "PERCENT":
+        try:
+            reference_price = float(fetch_latest_quote(item.instrument_key)["price"])
+        except (MarketDataError, KeyError, TypeError, ValueError) as exc:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Current price unavailable; percentage alert was not created") from exc
+        multiplier = 1 + body.target_percent / 100 if body.direction == "ABOVE" else 1 - body.target_percent / 100
+        target_price = round(reference_price * multiplier, 4)
+        if target_price <= 0:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Percentage alert creates an invalid target price")
     now = datetime.now(timezone.utc)
     level = WatchLevel(
         user_id=active_user_id(), instrument_key=item.instrument_key, symbol=item.symbol,
-        target_price=body.target_price, direction=body.direction, active=True,
+        target_price=target_price, alert_type=body.alert_type,
+        target_percent=body.target_percent if body.alert_type == "PERCENT" else None,
+        reference_price=reference_price, direction=body.direction, active=True,
         created_at=now, updated_at=now,
     )
     try:
@@ -936,6 +968,7 @@ def add_to_watchlist(body: WatchlistCreate, db: Session = Depends(get_db)):
             symbol=body.symbol,
             company_name=body.company_name,
             instrument_key=body.instrument_key,
+            sector=sector_for(body.symbol, body.sector),
         )
         db.add(item)
         db.flush()

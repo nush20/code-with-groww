@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy import Boolean, CheckConstraint, DateTime, Float, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
@@ -17,6 +18,7 @@ class WatchlistItem(Base):
     symbol: Mapped[str] = mapped_column(String(30), nullable=False)
     company_name: Mapped[str] = mapped_column(String(200), nullable=False)
     instrument_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    sector: Mapped[str] = mapped_column(String(80), nullable=False, default="Other")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
@@ -68,6 +70,9 @@ class WatchLevel(Base):
     instrument_key: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     symbol: Mapped[str] = mapped_column(String(30), nullable=False)
     target_price: Mapped[float] = mapped_column(Float, nullable=False)
+    alert_type: Mapped[str] = mapped_column(String(12), nullable=False, default="PRICE")
+    target_percent: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    reference_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     direction: Mapped[str] = mapped_column(String(10), nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

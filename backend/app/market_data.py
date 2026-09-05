@@ -10,6 +10,8 @@ from zoneinfo import ZoneInfo
 import httpx
 from dotenv import load_dotenv
 
+from .sector_metadata import sector_for
+
 
 load_dotenv()
 
@@ -215,6 +217,7 @@ def search_stocks(query: str, limit: int = 8) -> list[dict]:
             "company_name": str(company_name).title(),
             "exchange": "NSE",
             "instrument_key": str(instrument_key),
+            "sector": sector_for(str(symbol), raw.get("sector") or raw.get("industry")),
         })
         if len(results) == limit:
             break

@@ -10,6 +10,7 @@ export default function AddStock({onAdd, busy, existingSymbols}) {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [selected, setSelected] = useState(null);
   const [targetPrice, setTargetPrice] = useState('');
+  const [alertType, setAlertType] = useState('PRICE');
   const [direction, setDirection] = useState('ABOVE');
   const requestNumber = useRef(0);
   const containerRef = useRef(null);
@@ -49,14 +50,18 @@ export default function AddStock({onAdd, busy, existingSymbols}) {
 
   function choose(stock) {
     if (existingSymbols.includes(stock.symbol)) return;
-    setSelected(stock); setOpen(false); setTargetPrice(''); setDirection('ABOVE');
+    setSelected(stock); setOpen(false); setTargetPrice(''); setAlertType('PRICE'); setDirection('ABOVE');
   }
 
   async function add() {
     if (!selected) return;
     const numericTarget = Number(targetPrice);
-    const watchLevel = targetPrice.trim() && numericTarget > 0 ? {target_price: numericTarget, direction} : null;
-    const added = await onAdd({symbol: selected.symbol, company_name: selected.company_name, instrument_key: selected.instrument_key}, watchLevel);
+    const watchLevel = targetPrice.trim() && numericTarget > 0
+      ? alertType === 'PRICE'
+        ? {alert_type: 'PRICE', target_price: numericTarget, direction}
+        : {alert_type: 'PERCENT', target_percent: numericTarget, direction}
+      : null;
+    const added = await onAdd({symbol: selected.symbol, company_name: selected.company_name, instrument_key: selected.instrument_key, sector: selected.sector}, watchLevel);
     if (added) {
       setQuery(''); setResults([]); setOpen(false); setSelected(null); setTargetPrice('');
     }
@@ -83,7 +88,7 @@ export default function AddStock({onAdd, busy, existingSymbols}) {
         onChange={event => setQuery(event.target.value)}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="Type a company name or symbol..." autoComplete="off"
+        placeholder="Type a company name..." autoComplete="off"
         role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls="stock-search-results"
         aria-activedescendant={activeIndex >= 0 ? `stock-option-${activeIndex}` : undefined}/>
     </div>
@@ -106,13 +111,17 @@ export default function AddStock({onAdd, busy, existingSymbols}) {
     </div>}
     {selected && <div className="add-stock-confirmation">
       <header><div><strong>{selected.company_name}</strong><span>{selected.symbol} · NSE</span></div><button type="button" onClick={() => setSelected(null)} aria-label="Cancel adding stock">×</button></header>
-      <div className="optional-level-title"><strong>Add a price alert?</strong><span>Optional—you can add the stock without one.</span></div>
+      <div className="optional-level-title"><strong>Add an alert?</strong><span>Optional—choose a price target or a percentage move.</span></div>
+      <div className="alert-type" role="group" aria-label="Alert type">
+        <button type="button" className={alertType === 'PRICE' ? 'active' : ''} onClick={() => { setAlertType('PRICE'); setTargetPrice(''); }}>Target price</button>
+        <button type="button" className={alertType === 'PERCENT' ? 'active' : ''} onClick={() => { setAlertType('PERCENT'); setTargetPrice(''); }}>Percentage move</button>
+      </div>
       <div className="optional-level-form">
-        <div className="level-direction" role="group" aria-label="Watch price direction">
-          <button type="button" className={direction === 'ABOVE' ? 'active' : ''} onClick={() => setDirection('ABOVE')}>Above</button>
-          <button type="button" className={direction === 'BELOW' ? 'active' : ''} onClick={() => setDirection('BELOW')}>Below</button>
+        <div className="level-direction" role="group" aria-label="Alert direction">
+          <button type="button" className={direction === 'ABOVE' ? 'active' : ''} onClick={() => setDirection('ABOVE')}>{alertType === 'PRICE' ? 'Above' : 'Goes up'}</button>
+          <button type="button" className={direction === 'BELOW' ? 'active' : ''} onClick={() => setDirection('BELOW')}>{alertType === 'PRICE' ? 'Below' : 'Goes down'}</button>
         </div>
-        <label><span>Target price</span><div><b>₹</b><input type="number" min="0.01" step="0.01" value={targetPrice} onChange={event => setTargetPrice(event.target.value)} placeholder="Optional"/></div></label>
+        <label><span>{alertType === 'PRICE' ? 'Target price' : 'Move by'}</span><div className={alertType === 'PERCENT' ? 'percent-input' : ''}><b>{alertType === 'PRICE' ? '₹' : '%'}</b><input type="number" min="0.01" max={alertType === 'PERCENT' ? '100' : undefined} step="0.01" value={targetPrice} onChange={event => setTargetPrice(event.target.value)} placeholder="Optional"/></div></label>
       </div>
       <button type="button" className="confirm-add-stock" onClick={add} disabled={busy || (targetPrice.trim() && Number(targetPrice) <= 0)}>{busy ? 'Adding…' : targetPrice.trim() ? 'Add stock & alert' : 'Add to watchlist'}</button>
     </div>}

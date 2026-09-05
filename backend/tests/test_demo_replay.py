@@ -79,10 +79,13 @@ class DemoReplayTests(unittest.TestCase):
     def test_combined_gallery_uses_three_real_inputs_and_combined_signals(self):
         result = main.get_catchup_demo()
         self.assertEqual({event["symbol"] for event in result["events"]}, {"PINELABS", "INFOBEAN", "TATATECH"})
-        self.assertTrue(all(event["is_hidden_journey"] for event in result["events"]))
-        self.assertTrue(all(event["watch_level_events"] for event in result["events"]))
+        self.assertTrue(all(event["is_hidden_journey"] for event in result["events"][:3]))
         self.assertEqual(len(replay_examples()), 3)
         events = {event["symbol"]: event for event in result["events"]}
+        self.assertEqual(events["INFOBEAN"]["watch_level_events"], [])
+        self.assertEqual(events["INFOBEAN"]["unusualness"]["state"], "UNUSUAL_MOVE")
+        self.assertTrue(events["PINELABS"]["watch_level_events"])
+        self.assertTrue(events["TATATECH"]["watch_level_events"])
         self.assertEqual(events["INFOBEAN"]["context"]["status"], "NONE")
         self.assertEqual(events["TATATECH"]["context"]["status"], "NONE")
 

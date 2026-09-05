@@ -40,7 +40,7 @@ export default function StockDetail({symbol, initialRange, onBack, backLabel}) {
       {data.period.is_partial && <p className="partial-note">Showing {data.period.session_count} available trading sessions. No missing sessions were fabricated.</p>}
       <section className="detail-panel"><h2>Price journey</h2><JourneyChart candles={data.candles} high={data.period_high} low={data.period_low} latest={data.latest_price}/>
         <p className="detail-freshness">{data.freshness.is_stale ? 'Delayed data' : 'Latest data'} · Updated {moment(data.freshness.market_timestamp)}</p></section>
-      <div className="detail-grid"><section className="detail-panel"><p className="eyebrow">WHAT HAPPENED</p><h2>{data.display_label}</h2><p className="detail-summary">{data.summary} {data.explanation}</p></section>
+      <div className="detail-grid"><section className="detail-panel what-happened-panel"><p className="eyebrow">WHAT HAPPENED?</p><h2>{data.display_label}</h2><p className="detail-summary">{data.summary} {data.explanation}</p></section>
         <section className="detail-panel"><p className="eyebrow">KEY FACTS</p><dl className="detail-facts">
           <div><dt>Period return</dt><dd>{signed(data.period_return_pct)}</dd></div><div><dt>Largest excursion</dt><dd>{signed(data.max_excursion_pct)}</dd></div>
           <div><dt>Period high</dt><dd>{money(data.period_high)}</dd></div><div><dt>Period low</dt><dd>{money(data.period_low)}</dd></div><div><dt>{data.movement_label}</dt><dd>{data.reversal_pct.toFixed(0)}%</dd></div>
