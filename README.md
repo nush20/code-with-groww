@@ -1,336 +1,34 @@
 # MarketMemo
 
-> **A smart market watchlist that remembers what happened while you weren't looking.**
+> **Your watchlist remembers what happened while you were away.**
 
-MarketMemo is a full-stack Indian-market watchlist built for **Groww CODE 2026**. It combines real Upstox market data, persistent watchlists, personal alerts, daily market context, and a baseline-based **Catch-Up** experience.
+MarketMemo is a smart Indian-market watchlist built for **Groww CODE 2026**. It combines real Upstox market data, persistent personal watchlists, price and percentage alerts, a watchlist-wide daily roundup, source-backed company developments, and a baseline-based **Catch-Up** experience.
 
-Traditional watchlists show where a stock is now. MarketMemo also captures what happened between visits — including meaningful moves that later reversed, personal levels that were crossed, and movements that were unusual for that stock.
+Traditional watchlists show where a stock is now. MarketMemo also preserves the important journey between visits: an alert crossed and later reversed, a move that was unusually large for that stock, or a company development published during the period.
 
-MarketMemo is an information product and prototype. It does not predict prices, recommend trades, or provide investment advice.
+MarketMemo is an informational prototype. It does not predict prices, recommend trades, or provide investment advice.
+
+---
+
+## Live Demo
+
+- **Web app:** [nush20.github.io/code-with-groww](https://nush20.github.io/code-with-groww/)
+- **Backend:** [marketmemo-api.onrender.com](https://marketmemo-api.onrender.com)
+- **Health check:** [marketmemo-api.onrender.com/health](https://marketmemo-api.onrender.com/health)
+
+The backend uses Render's free tier, so its first request after inactivity may take around a minute while the service wakes up.
+
+---
 
 ## Product Pitch
 
-MarketMemo is a smart Indian-market watchlist that helps people understand what changed without watching prices all day. Users build a personal NSE watchlist, set price or percentage alerts, and see live market snapshots, daily watchlist impact, source-linked company developments, and clear stock journeys. Catch-Up remembers the user’s last acknowledged checkpoint and surfaces important moves, reversals, unusual activity, and crossed alerts that a current price alone can hide. Upstox supplies market data and company news; deterministic code performs every financial calculation. Gemini may improve wording, but never decides signals. The result is a calm, personalized market brief—not another noisy trading terminal.
+MarketMemo is a smart Indian-market watchlist that helps people understand what changed without watching prices all day. Users build a personal NSE watchlist, set price or percentage alerts, and see live market snapshots, daily watchlist impact, source-linked company developments, and clear stock journeys. Catch-Up remembers the user's last acknowledged checkpoint and surfaces important moves, reversals, unusual activity, and crossed alerts that a current price alone can hide. Upstox supplies market data and company news; deterministic code performs every financial calculation. Gemini may improve wording, but never decides signals. The result is a calm, personalized market brief—not another noisy trading terminal.
 
 ---
 
-## Feature Overview
+## Quickstart — No Docker Required
 
-* **Account-based persistence:** sign up, log in, log out, and keep each user’s watchlist, alerts, and Catch-Up checkpoint separate.
-* **Consumer-friendly stock search:** search NSE equities by company name or symbol; Upstox instrument keys remain internal.
-* **Persistent watchlist:** add and remove companies, with state stored in PostgreSQL in deployment and SQLite available locally.
-* **Market snapshots:** latest available price, daily percentage change, session high and low, previous close, and honest freshness labels.
-* **Watchlist-wide daily roundup:** breadth across watched stocks, the largest move, an equal-weight directional summary, and development count for the latest session.
-* **Daily activity card:** expands into source-backed developments for watchlist companies, grouped by sector to remain readable as the list grows.
-* **Stock detail:** click a watchlist company to inspect its Upstox candle journey over 1D, 1W, 2W, or 1M.
-* **Deterministic market recap:** period return, high, low, largest excursion, reversal/recovery, important moments, and a concise facts-based explanation.
-* **Personal alerts:** create an optional fixed-price alert or an “up/down by X%” alert while adding a company; saved alerts remain visible on the watchlist.
-* **Catch-Up with memory:** analyze only the interval since the user’s last explicitly acknowledged checkpoint.
-* **Hidden-journey detection:** preserve a meaningful move even if much of it disappears before the user returns.
-* **Volatility-normalized unusual movement:** compare an observed move with that stock’s own historical behavior rather than applying one percentage threshold to every company.
-* **Contextual company news:** show Upstox headline, timestamp, source, short summary, and source URL without claiming the news caused a price move.
-* **Quiet-state compression:** show each company once, combine applicable signals, and keep unchanged stocks from cluttering Catch-Up.
-* **Historical replay:** demonstrate real historical Upstox inputs through the same production calculation pipeline without changing live user state.
-* **Optional Gemini wording:** turn verified structured facts into concise language, with validation and deterministic fallback.
-* **Resilient provider handling:** quotes, analysis, and pages continue to degrade clearly when news, history, Gemini, or individual market requests are unavailable.
-
----
-
-## The Problem
-
-A watchlist is usually a snapshot.
-
-Consider a stock that moves:
-
-```text
-₹100 → ₹110 → ₹101
-```
-
-If a user checks at ₹100 and returns at ₹101, the latest snapshot shows only a **+1% change**.
-
-But while they were away, the stock moved 10% and gave back most of that move.
-
-That journey can matter even though it is no longer visible in the current price.
-
-**MarketMemo gives the watchlist memory.**
-
----
-
-## What MarketMemo Does
-
-MarketMemo is organized around three experiences:
-
-| Experience       | What it answers                                                 |
-| ---------------- | --------------------------------------------------------------- |
-| **Watchlist**    | Where are my stocks now, and what happened today?               |
-| **Stock Detail** | What did this stock's journey look like over 1D / 1W / 2W / 1M? |
-| **Catch-Up**     | What meaningful events happened since I last checked?           |
-
-### Watchlist
-
-Users can search NSE companies and maintain a persistent personal watchlist.
-
-The watchlist shows:
-
-* latest available price and daily change
-* high, low and previous close
-* market-data freshness
-* latest-session activity
-* largest watchlist moves
-* sector-level context
-* relevant company developments
-
-Users can also create personal alerts based on a fixed price or percentage move.
-
-### Daily Watchlist Roundup
-
-The highlighted **Today in your watchlist** card summarizes the most recent complete trading session across only the companies the user follows. It shows:
-
-* how many watched stocks finished higher, lower, or unchanged
-* the equal-weight average move across the watchlist
-* the largest watchlist move
-* how many verified company developments were found
-
-Its **View today’s activity** control opens a compact feed of developments grouped by sector. Each item keeps its original source and link. This is a watchlist summary—not a portfolio return, index calculation, or claim of news causality.
-
-### Stock Detail
-
-Selecting a company opens its complete market journey for **1D, 1W, 2W or 1M**.
-
-The backend calculates the period return, high, low, largest excursion, and reversal or recovery from normalized market candles. The frontend displays these results without independently recalculating financial values.
-
-### Catch-Up
-
-Catch-Up starts from the last checkpoint the user explicitly acknowledged with **Mark caught up**.
-
-Opening the app, refreshing, or logging in does not move this checkpoint.
-
-For each watched stock, MarketMemo analyzes observations after the checkpoint and looks for three signals:
-
-#### Hidden Journey
-
-A meaningful price move occurred while the user was away, but much of it later reversed.
-
-```text
-LEFT              PEAK               NOW
-₹100 ──────────── ₹110 ───────────── ₹101
-
-                   +10%
-                                     only +1% now
-```
-
-The endpoint looks quiet, but the journey was not.
-
-#### Personal Alert
-
-A price or percentage level selected by the user was crossed during the interval, even if the stock later moved back.
-
-```text
-₹100 ───── ₹105 ───── ₹110 ───── ₹101
-             ✓
-        alert reached
-```
-
-#### Unusual Movement
-
-MarketMemo compares the observed excursion with the stock's own historical movement.
-
-```text
-expected movement = typical daily movement × √(trading sessions)
-
-significance = |observed excursion| / expected movement
-```
-
-This allows the same percentage move to be interpreted differently for stocks with different historical volatility.
-
-It is a relative movement measure — not a probability, confidence score, or prediction.
-
-If there is not enough history, MarketMemo reports insufficient history instead of manufacturing a result.
-
-A stock appears once even if multiple signals apply. Quiet stocks are compressed rather than competing for attention.
-
----
-
-## Daily Context vs Catch-Up
-
-These intentionally solve different problems.
-
-|                       | Daily Watchlist                   | Catch-Up                                        |
-| --------------------- | --------------------------------- | ----------------------------------------------- |
-| **Window**            | Latest available trading session  | Since last acknowledged checkpoint              |
-| **Personal baseline** | No                                | Yes                                             |
-| **Purpose**           | Understand what happened that day | Recover meaningful events missed between visits |
-
-This matters after market close.
-
-If the user clicks **Mark caught up** after the session, Catch-Up may correctly have nothing new to report. The daily watchlist can still explain what happened during that completed session.
-
----
-
-## Company Developments
-
-MarketMemo uses Upstox company developments to add context to market activity.
-
-For the daily view, developments are matched to the corresponding trading day and displayed alongside the company's market journey.
-
-MarketMemo keeps **market movement and company context separate**.
-
-It can say:
-
-> A company development was published during the session.
-
-It does not automatically claim:
-
-> The development caused the stock to move.
-
-A failed or empty news response never prevents the underlying market analysis from working.
-
----
-
-## Deterministic Analysis
-
-MarketMemo's financial analysis does not depend on an LLM.
-
-```text
-Upstox market data
-        ↓
-Normalized candles
-        ↓
-Deterministic calculations
-        ↓
-Meaningful-change detection
-        ↓
-Structured facts
-        ↓
-User-facing summary
-```
-
-Returns, excursions, reversals, recoveries, alert crossings, and unusual-movement calculations are performed in application code.
-
-### Optional Gemini summaries
-
-Gemini is an optional wording layer.
-
-When enabled, it receives already-verified structured facts and converts them into concise language. It does not calculate market values, classify events, predict prices, provide advice, or infer unsupported causes.
-
-If generated output is invalid or the provider fails, MarketMemo falls back to deterministic templates.
-
-> **The model can explain the result. It does not decide the result.**
-
----
-
-## Architecture
-
-```text
-React + Vite
-      │
-      │ HTTPS / JSON
-      ▼
-FastAPI + Pydantic
-      │
-      ├── SQLAlchemy ── PostgreSQL / SQLite
-      │
-      ├── Upstox ────── instruments, quotes, candles, developments
-      │
-      └── Gemini ────── optional summary wording
-```
-
-### Shared market state, personalized meaning
-
-Market observations such as quotes and candles are instrument-level information and can be reused across users.
-
-User-specific state is stored separately:
-
-* watchlist membership
-* personal alerts
-* Catch-Up checkpoints
-
-Shared provider responses are cached briefly instead of fetching identical upstream data independently for every user.
-
-This keeps personalization where it is actually required without duplicating shared market work.
-
----
-
-## Reliability and Edge Cases
-
-MarketMemo is designed to degrade gracefully.
-
-* **Explicit checkpoint:** only **Mark caught up** changes the Catch-Up baseline.
-* **Freshness:** provider observation time is preserved separately from when MarketMemo received the data.
-* **Stale data:** delayed observations remain labelled instead of being presented as live.
-* **Partial provider failure:** one failed quote or development request does not invalidate the entire watchlist.
-* **Missing history:** unusual movement is unavailable rather than estimated from insufficient observations.
-* **Missing developments:** market analysis still works without company news.
-* **LLM failure:** deterministic summaries remain available.
-
----
-
-## Historical Replay
-
-Live markets cannot be expected to produce an interesting Catch-Up event during a demonstration.
-
-MarketMemo therefore includes an isolated:
-
-> **HISTORICAL REPLAY · REAL MARKET DATA**
-
-Replay fixtures preserve historical Upstox inputs and pass them through the **same production detectors** used by live Catch-Up.
-
-The fixtures store inputs such as candles and available development metadata — not calculated conclusions such as excursion percentage, reversal percentage, or detector results.
-
-The replayed checkpoint and optional alert represent user state for the scenario.
-
-Historical replay never modifies the user's real:
-
-* watchlist
-* alerts
-* Catch-Up checkpoint
-
-This keeps the demo deterministic without maintaining separate fake analysis logic.
-
----
-
-## Tech Stack
-
-| Layer                  | Technology                      |
-| ---------------------- | ------------------------------- |
-| Frontend               | React, Vite                     |
-| Backend                | FastAPI, Pydantic               |
-| Persistence            | SQLAlchemy, PostgreSQL / SQLite |
-| Market Data            | Upstox API                      |
-| Optional Summary Layer | Gemini                          |
-| Deployment             | GitHub Pages, Render            |
-
----
-
-## Repository Structure
-
-```text
-backend/
-  app/                 FastAPI routes, models, providers and analysis
-  tests/               Backend tests
-  requirements.txt
-
-frontend/
-  src/                 React application
-  package.json
-
-.github/workflows/     Deployment
-render.yaml            Render configuration
-.env.example           Environment configuration
-```
-
----
-
-## Run Locally
-
-### Requirements
-
-* Python 3.9+
-* Node.js 20+
-* pnpm
-* Upstox access token
-
-### Backend
+### Terminal 1: backend
 
 ```bash
 git clone https://github.com/nush20/code-with-groww.git
@@ -339,93 +37,493 @@ cd code-with-groww
 python3 -m venv .venv
 source .venv/bin/activate
 python3 -m pip install -r backend/requirements.txt
-
 cp .env.example .env
-```
 
-For the simplest local setup:
-
-```env
-DATABASE_URL=sqlite:///./catchup.db
-UPSTOX_ACCESS_TOKEN=your_token
-SUMMARY_PROVIDER=template
-```
-
-Start the API:
-
-```bash
 python3 -m uvicorn app.main:app --reload --app-dir backend --port 8000
 ```
 
-### Frontend
+### Terminal 2: frontend
 
 ```bash
-cd frontend
-cp .env.example .env
+cd code-with-groww/frontend
 npm install
+cp .env.example .env
 npm run dev
 ```
 
-If pnpm is already installed, `pnpm install` and `pnpm dev` work as well.
+Open [http://localhost:5173](http://localhost:5173).
 
-Set:
+Before using live market features, place a valid Upstox access token in the root `.env`. Gemini is optional.
+
+---
+
+## Demo Walkthrough
+
+1. Open MarketMemo and create an account.
+2. Search for an NSE company by name, such as Reliance, Infosys, or Tata Steel.
+3. Optionally add a fixed-price alert or an “up/down by X%” alert while adding the stock.
+4. Add a few companies to build the watchlist.
+5. Review the **Today in your watchlist** roundup for breadth, average direction, largest move, and development count.
+6. Open **View today's activity** to see source-backed developments grouped by sector.
+7. Select a stock to inspect its 1D, 1W, 2W, or 1M market journey and deterministic key facts.
+8. Open **Catch me up** to see meaningful events since the saved checkpoint.
+9. Use the historical replay when live markets do not naturally produce a strong demonstration event.
+10. Mark the real Catch-Up as caught up to save a new personal checkpoint.
+
+---
+
+## The Core Problem
+
+A normal watchlist is only a snapshot.
+
+```text
+₹100  →  ₹110  →  ₹101
+left      peak      now
+```
+
+If someone leaves at ₹100 and returns at ₹101, the latest price shows only **+1%**. It hides the 10% rise and the reversal that happened in between.
+
+MarketMemo changes the question from:
+
+> Where is the stock now?
+
+to:
+
+> What mattered while I was away?
+
+---
+
+## Core Features
+
+### 1. Personal, Persistent Watchlist
+
+- Search NSE equities by company name or trading symbol.
+- Keep the Upstox instrument key internal; users never need to enter it.
+- Add and remove watched companies.
+- Persist watchlists across refreshes and sessions.
+- Keep each account's watchlist, alerts, and checkpoints separate.
+
+### 2. Live Market Snapshot
+
+Each watchlist company can show:
+
+- latest available price
+- daily percentage change
+- session high and low
+- previous close
+- market observation time
+- freshness status such as current, delayed, or stale
+
+MarketMemo does not call delayed data “live” merely because it was recently fetched.
+
+### 3. Daily Watchlist Roundup
+
+The highlighted **Today in your watchlist** card explains the latest complete trading session across only the companies the user follows.
+
+It includes:
+
+- number of watched stocks higher, lower, or unchanged
+- equal-weight average move across the watchlist
+- largest watchlist move
+- number of verified company developments
+- expandable **View today's activity** feed
+
+This is a watchlist-level directional summary—not portfolio P&L or an index calculation.
+
+### 4. Company Developments and Daily Activity
+
+MarketMemo fetches company developments from Upstox and keeps only items relevant to the watchlist and selected trading period.
+
+The daily activity feed:
+
+- groups developments by sector for larger watchlists
+- preserves headline, publication time, source, and URL
+- shows a short source-grounded summary when available
+- links to the original article
+- remains optional, so missing news never blocks market analysis
+
+MarketMemo presents news as **relevant context**. It never automatically claims that an article caused a price move.
+
+### 5. Stock Detail and Market Journey
+
+Selecting a watchlist company opens its market journey for:
+
+- **1D** — the full selected trading session
+- **1W** — approximately five sessions
+- **2W** — approximately ten sessions
+- **1M** — approximately twenty-two sessions
+
+The backend calculates period return, high, low, largest excursion, reversal or recovery, and important moments from normalized Upstox candles. The frontend renders these facts without recalculating them.
+
+### 6. Price and Percentage Alerts
+
+While adding a company, users can optionally choose:
+
+- **Price alert:** above or below a target price
+- **Percentage alert:** up or down by a selected percentage
+
+Alerts stay visible on the watchlist. During Catch-Up, the production detector determines whether a level was actually crossed—even if the price later moved back.
+
+### 7. Catch-Up With Memory
+
+Catch-Up begins at the user's last explicitly acknowledged checkpoint.
+
+Refreshing, opening the app, or logging in does not silently move the checkpoint. Only **Mark caught up** creates the next baseline.
+
+For each watched company, Catch-Up can surface:
+
+- a personal alert reached
+- a meaningful move that later reversed
+- a volatility-normalized unusual move
+- a relevant company development during the same interval
+
+Each company appears once even when several signals apply, and quiet companies are compressed to avoid clutter.
+
+### 8. Hidden Journey Detection
+
+A hidden journey is a meaningful excursion that is no longer obvious in the latest price.
+
+```text
+CHECKPOINT          EXTREME            LATEST
+₹100 ────────────── ₹110 ───────────── ₹101
+                     +10%               +1%
+```
+
+The detector uses the real checkpoint, candle extrema, latest value, and configured reversal threshold. Calculated results are not generated by an LLM.
+
+### 9. Volatility-Normalized Unusual Movement
+
+The same percentage move can be normal for one stock and unusual for another. MarketMemo compares the observed excursion with the company's own historical daily movement.
+
+```text
+expected movement = typical daily movement × √(trading sessions)
+
+significance = |observed excursion| ÷ expected movement
+```
+
+This is a relative movement measure—not a probability, prediction, or confidence score. If history is insufficient, the system says so instead of fabricating a result.
+
+### 10. Historical Replay Using Real Inputs
+
+Live markets cannot be expected to produce an interesting event during a hackathon demo. MarketMemo therefore includes an isolated:
+
+> **HISTORICAL REPLAY · REAL MARKET DATA**
+
+Replay fixtures preserve historical Upstox candles and available development metadata. Those inputs pass through the same production detectors as live Catch-Up.
+
+Fixtures do **not** store calculated excursion, reversal, unusualness, or detector conclusions. Replayed checkpoints and optional alerts represent scenario user state, and replay never changes the real user's watchlist, alerts, or checkpoint.
+
+### 11. Optional Gemini Summary Layer
+
+All financial facts and signal classifications are deterministic. Gemini receives only already-verified structured facts and may turn them into concise, less repetitive language.
+
+Gemini does not:
+
+- calculate prices, returns, reversals, or volatility
+- choose which detector fires
+- predict future prices
+- recommend buying or selling
+- add unsupported facts
+- claim that news caused market movement
+
+Generated text is validated. If Gemini times out, fails, or returns unsupported content, MarketMemo uses deterministic templates.
+
+> **The model may explain the result. It never decides the result.**
+
+### 12. Authentication and User Isolation
+
+- Email/password signup and login
+- Password hashing
+- Server-side session records
+- HTTP-only session cookie
+- Persistent user-specific watchlists, alerts, and checkpoints
+- Secure cross-site cookie configuration for GitHub Pages + Render deployment
+
+---
+
+## Daily Recap vs Catch-Up
+
+These features deliberately answer different questions.
+
+| | Daily watchlist / stock detail | Catch-Up |
+|---|---|---|
+| **Window** | Selected complete trading session or range | Since the user's saved checkpoint |
+| **User baseline** | No | Yes |
+| **Threshold required to display market facts** | No | Yes, for attention-worthy signals |
+| **Purpose** | Understand the selected market period | Recover important events missed between checks |
+| **News** | Same-day/period context | Context during the personalized interval |
+
+After the market closes, a user may mark Catch-Up complete and correctly see no new Catch-Up events. The daily view can still explain that completed session.
+
+---
+
+## System Architecture
+
+```text
+┌──────────────────────────────┐
+│ React + Vite                 │
+│ Watchlist · Detail · Catch-Up│
+└──────────────┬───────────────┘
+               │ HTTPS / JSON + session cookie
+               ▼
+┌──────────────────────────────┐
+│ FastAPI + Pydantic           │
+│ Routes · validation · auth   │
+└──────┬───────────┬───────────┘
+       │           │
+       ▼           ▼
+┌─────────────┐  ┌────────────────────────────┐
+│ SQLAlchemy  │  │ Upstox                    │
+│ PostgreSQL  │  │ search · quotes · candles │
+│ / SQLite    │  │ company developments      │
+└─────────────┘  └─────────────┬──────────────┘
+                               │ normalized observations
+                               ▼
+                 ┌────────────────────────────┐
+                 │ Deterministic analysis     │
+                 │ journey · alert · unusual  │
+                 │ recap · watchlist impact   │
+                 └─────────────┬──────────────┘
+                               │ verified facts
+                               ▼
+                 ┌────────────────────────────┐
+                 │ Template or Gemini wording │
+                 └────────────────────────────┘
+```
+
+### Shared market state, personalized meaning
+
+Quotes and candles are instrument-level observations. MarketMemo briefly caches these shared responses instead of fetching the same ticker separately for every user.
+
+User-specific state remains separate:
+
+- watchlist membership
+- alert definitions
+- Catch-Up checkpoint
+
+```text
+many users watch RELIANCE
+          ↓
+one cached market observation
+          ↓
+personal analysis against each user's state
+```
+
+---
+
+## Reliability Principles
+
+- **Honest freshness:** market timestamps and receipt times stay distinct.
+- **No silent fake fallback:** provider failures are surfaced or handled as partial failures.
+- **Partial results:** one failed quote or news request does not invalidate every company.
+- **Optional context:** empty or unavailable news does not stop market calculations.
+- **Insufficient history:** unusualness is unavailable rather than invented.
+- **Validated summaries:** unsupported generated wording falls back to templates.
+- **Explicit memory:** only user acknowledgement advances the Catch-Up checkpoint.
+- **Source preservation:** development timestamps, publishers, and URLs remain attached.
+- **No causality claims:** simultaneous news is context, not proof of why a price moved.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React, Vite |
+| Backend | FastAPI, Pydantic |
+| ORM | SQLAlchemy |
+| Database | PostgreSQL in deployment, SQLite locally |
+| Market data | Upstox API |
+| Optional language layer | Gemini |
+| Frontend hosting | GitHub Pages |
+| Backend hosting | Render |
+
+---
+
+## Repository Structure
+
+```text
+code-with-groww/
+├── backend/
+│   ├── app/
+│   │   ├── main.py                  API routes and orchestration
+│   │   ├── auth.py                  Sessions and password handling
+│   │   ├── database.py              SQLAlchemy configuration
+│   │   ├── models.py                Persistent database models
+│   │   ├── schemas.py               Pydantic API contracts
+│   │   ├── market_data.py           Upstox search, quotes and candles
+│   │   ├── market_recap.py          Range/session utilities
+│   │   ├── change_detection.py      Deterministic detectors
+│   │   ├── company_developments.py  News normalization and caching
+│   │   ├── summary_service.py       Templates and optional Gemini
+│   │   ├── demo_market_data.py      Isolated replay input loader
+│   │   └── fixtures/                Historical replay inputs
+│   ├── tests/
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── App.jsx
+│   │   └── api.js
+│   ├── package.json
+│   └── vite.config.js
+├── .github/workflows/deploy-pages.yml
+├── .env.example
+├── render.yaml
+└── README.md
+```
+
+---
+
+## Local Configuration
+
+Copy the example configuration:
+
+```bash
+cp .env.example .env
+```
+
+Minimal local configuration:
+
+```env
+DATABASE_URL=sqlite:///./catchup.db
+UPSTOX_ACCESS_TOKEN=replace_with_your_token
+SUMMARY_PROVIDER=template
+```
+
+To enable optional Gemini wording:
+
+```env
+SUMMARY_PROVIDER=gemini
+GEMINI_API_KEY=replace_with_your_key
+GEMINI_MODEL_NAME=gemini-3.1-flash-lite
+```
+
+Frontend configuration in `frontend/.env`:
 
 ```env
 VITE_API_BASE_URL=http://localhost:8000
 VITE_BASE_PATH=/
 ```
 
-Open `http://localhost:5173`.
+Never commit real API tokens. Production secrets belong in Render or GitHub repository secrets.
 
 ---
 
-## Testing
+## PostgreSQL Setup
 
-Backend:
+SQLite is the fastest local option. To test with PostgreSQL, create a database and replace `DATABASE_URL`:
 
-```bash
-python3 -m pytest backend/tests
+```env
+DATABASE_URL=postgresql+psycopg://postgres:your_password@localhost:5432/marketmemo
 ```
 
-Frontend:
+The deployed Render Blueprint creates PostgreSQL and injects its connection string automatically.
+
+---
+
+## Tests and Build
+
+Backend tests:
+
+```bash
+source .venv/bin/activate
+python3 -m pytest backend/tests -q
+```
+
+Frontend production build:
 
 ```bash
 cd frontend
+npm install
 npm run build
 ```
 
-External providers are mocked in the normal automated test suite, so tests do not depend on live Upstox or Gemini availability.
+Normal tests mock external providers and do not depend on live Upstox or Gemini availability.
 
 ---
 
-## Main API Endpoints
+## API Overview
 
-| Method                    | Endpoint                  | Purpose                          |
-| ------------------------- | ------------------------- | -------------------------------- |
-| `POST`                    | `/auth/signup`            | Create account                   |
-| `POST`                    | `/auth/login`             | Authenticate                     |
-| `GET`                     | `/stocks/search`          | Search NSE equities              |
-| `GET` / `POST` / `DELETE` | `/watchlist`              | Manage watchlist                 |
-| `GET` / `POST` / `DELETE` | `/watch-levels`           | Manage personal alerts           |
-| `GET`                     | `/market-recap`           | Latest-session analysis          |
-| `GET`                     | `/stocks/{symbol}/detail` | Stock-period analysis            |
-| `GET`                     | `/catchup`                | Analyze changes since checkpoint |
-| `POST`                    | `/catchup/mark`           | Update checkpoint                |
-| `GET`                     | `/catchup/demo`           | Historical replay                |
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/health` | Service health |
+| `POST` | `/auth/signup` | Create an account |
+| `POST` | `/auth/login` | Start a session |
+| `GET` | `/auth/me` | Return the current user |
+| `POST` | `/auth/logout` | End the session |
+| `GET` | `/stocks/search?q=` | Search normalized NSE equities |
+| `GET` | `/watchlist` | Load the personal watchlist |
+| `POST` | `/watchlist` | Add a selected company |
+| `DELETE` | `/watchlist/{id}` | Remove a watched company |
+| `GET` | `/watch-levels` | List personal alerts |
+| `POST` | `/watch-levels` | Create a price or percentage alert |
+| `DELETE` | `/watch-levels/{id}` | Remove an alert |
+| `GET` | `/market-recap?range=1D` | Watchlist-wide recap and daily activity |
+| `GET` | `/stocks/{symbol}/detail?range=1D` | Stock journey and market facts |
+| `GET` | `/catchup/status` | Load checkpoint status |
+| `GET` | `/catchup` | Analyze meaningful changes since checkpoint |
+| `POST` | `/catchup/mark` | Save the next checkpoint |
+| `GET` | `/catchup/demo` | Run isolated historical replay |
+
+---
+
+## Deployment
+
+### Frontend — GitHub Pages
+
+The workflow in `.github/workflows/deploy-pages.yml` builds and publishes the Vite frontend. Configure this repository secret:
+
+```text
+VITE_API_BASE_URL=https://marketmemo-api.onrender.com
+```
+
+In GitHub, set **Settings → Pages → Source** to **GitHub Actions**.
+
+### Backend — Render
+
+`render.yaml` provisions:
+
+- the FastAPI web service
+- a PostgreSQL database
+- health checks
+- production cookie and CORS configuration
+
+Set these secret environment variables in Render:
+
+```text
+UPSTOX_ACCESS_TOKEN
+GEMINI_API_KEY
+```
+
+`GEMINI_API_KEY` is only required when `SUMMARY_PROVIDER=gemini`.
 
 ---
 
 ## Prototype Limitations
 
-* MarketMemo is not a trading terminal and does not guarantee real-time quotes.
-* Company-development availability depends on Upstox's available history.
-* Company developments are context, not proof of causality.
-* Watchlist-wide and sector figures are not portfolio P&L.
-* Shared caches are currently process-local.
-* Production use would require additional authentication hardening, rate limiting, managed migrations, monitoring, and infrastructure scaling.
+- Upstox token availability and permissions determine which live data can be fetched.
+- The Upstox news window may not retain older company developments.
+- Render's free service may cold-start after inactivity.
+- Shared caches are currently process-local rather than distributed.
+- Watchlist-wide averages are not weighted by holdings and are not portfolio returns.
+- Authentication is suitable for a prototype but production would need email verification, password reset, CSRF review, rate limiting, managed migrations, monitoring, and stronger operational controls.
+- MarketMemo is not a licensed market-data terminal and does not guarantee real-time quotes.
+
+---
+
+## Engineering Principles
+
+1. **Facts before wording** — calculations happen before any generated summary.
+2. **Meaning over noise** — Catch-Up surfaces attention-worthy changes and compresses quiet stocks.
+3. **Market state is shared; meaning is personal** — reuse observations, personalize analysis.
+4. **Explicit memory** — the user's checkpoint moves only when they acknowledge it.
+5. **Context is not causation** — news is linked and attributed without unsupported conclusions.
+6. **Graceful degradation** — missing optional data never erases verified market facts.
+7. **No trading advice** — the product explains observed history rather than predicting what to do next.
 
 ---
 
 ## Disclaimer
 
-MarketMemo is a prototype and information product. It does not provide investment advice, trading recommendations, price predictions, or guarantees about market outcomes.
+MarketMemo is a hackathon prototype and informational product. It does not provide investment advice, trading recommendations, price predictions, or guarantees about market outcomes.
