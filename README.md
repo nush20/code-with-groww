@@ -8,6 +8,10 @@ GitHub Pages hosts only the React frontend. Deploy the FastAPI backend and datab
 
 The workflow in `.github/workflows/deploy-pages.yml` builds and publishes the frontend whenever `main` is pushed. In the GitHub repository, open **Settings → Pages** and choose **GitHub Actions** as the source.
 
+## Render backend
+
+The root `render.yaml` Blueprint creates the `marketmemo-api` FastAPI service and a managed PostgreSQL database. In Render, create a new Blueprint from this repository and enter `UPSTOX_ACCESS_TOKEN` and `GEMINI_API_KEY` when prompted. After deployment, add the service URL as the GitHub Actions secret `VITE_API_BASE_URL`, then rerun the Pages workflow.
+
 Step 3 adds persistent user baselines to the existing watchlist and Upstox quotes. A baseline is the last market state explicitly acknowledged by the user. It moves only when the user clicks **Mark caught up**; opening, refreshing, or loading market data does not change it.
 
 Step 3 stores user state only. It does not yet determine whether anything meaningful happened after the baseline. A stock added after the user already has a baseline receives an initial baseline at its latest available price because the user has just seen that stock. Removing a stock also removes its baseline.
