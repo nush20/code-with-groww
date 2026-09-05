@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.DS_Store
+.pnpm-store/
+work/
+*.tsbuildinfo
+*.pyc
+*.db
+.env
+node_modules/
+dist/
+docker-compose.yml
