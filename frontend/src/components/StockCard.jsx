@@ -1,4 +1,4 @@
-export default function StockCard({stock, watchLevels = [], onRemove, busy}) {
+export default function StockCard({stock, watchLevels = [], onRemove, onView, busy}) {
   const money = value => new Intl.NumberFormat('en-IN', {style: 'currency', currency: 'INR', minimumFractionDigits: 2, maximumFractionDigits: 2}).format(value);
   const age = timestamp => {
     const seconds = Math.max(0, Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000));
@@ -9,10 +9,16 @@ export default function StockCard({stock, watchLevels = [], onRemove, busy}) {
   const change = stock.market?.change_percent ?? 0;
   const changeLabel = change > 0 ? `▲ +${change.toFixed(2)}%` : change < 0 ? `▼ ${change.toFixed(2)}%` : '0.00%';
 
-  return <article className="stock-card">
+  function openCard(event) {
+    if (event.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+    if (event.type === 'keydown') event.preventDefault();
+    onView(stock);
+  }
+
+  return <article className="stock-card stock-card-clickable" role="link" tabIndex="0" onClick={openCard} onKeyDown={openCard} aria-label={`View ${stock.company_name}`}>
     <header className="card-header">
       <div><strong>{stock.symbol}</strong><h3>{stock.company_name}</h3></div>
-      <button className="remove" onClick={() => onRemove(stock.id)} disabled={busy} aria-label={`Remove ${stock.company_name} from watchlist`}>Remove</button>
+      <button className="remove" onClick={event => { event.stopPropagation(); onRemove(stock.id); }} disabled={busy} aria-label={`Remove ${stock.company_name} from watchlist`}>Remove</button>
     </header>
     {stock.market ? <>
       <div className="quote-line">
@@ -32,5 +38,6 @@ export default function StockCard({stock, watchLevels = [], onRemove, busy}) {
       <strong>Your price alert</strong>
       {watchLevels.map(level => <span key={level.id}>{level.direction === 'ABOVE' ? '↑ Above' : '↓ Below'} {money(level.target_price)}</span>)}
     </div>}
+    <span className="open-stock">View stock <span aria-hidden="true">→</span></span>
   </article>;
 }

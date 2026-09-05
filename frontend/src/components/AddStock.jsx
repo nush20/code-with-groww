@@ -76,14 +76,14 @@ export default function AddStock({onAdd, busy, existingSymbols}) {
   }
 
   return <section className="stock-search" ref={containerRef}>
-    <label htmlFor="stock-search-input">Search stocks</label>
+    <label htmlFor="stock-search-input">Add a stock</label>
     <div className="search-input-wrap">
       <span aria-hidden="true">⌕</span>
       <input id="stock-search-input" value={query}
         onChange={event => setQuery(event.target.value)}
         onFocus={() => query.trim().length >= 2 && setOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="Search stocks by company or symbol..." autoComplete="off"
+        placeholder="Type a company name or symbol..." autoComplete="off"
         role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls="stock-search-results"
         aria-activedescendant={activeIndex >= 0 ? `stock-option-${activeIndex}` : undefined}/>
     </div>

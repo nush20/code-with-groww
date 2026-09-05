@@ -31,7 +31,7 @@ function JourneyCard({event}) {
   </article>;
 }
 
-export default function CatchUp() {
+export default function CatchUp({onBack}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
@@ -66,6 +66,7 @@ export default function CatchUp() {
   }
 
   return <main className="catchup-page">
+    <button type="button" className="detail-back" onClick={onBack}>← Watchlist</button>
     <section className="catchup-heading"><p className="eyebrow">CATCH-UP</p><h1>What did I miss?</h1>
       <p>{data?.mode === 'demo' ? `${data.meaningful_count} complete Catch-Up examples · historical replay using real market data.` : data?.since ? `Since you last checked on ${new Intl.DateTimeFormat(undefined, {dateStyle:'medium', timeStyle:'short'}).format(new Date(data.since))}` : 'Mark caught up once to start remembering what happens while you’re away.'}</p>
       {!loading && <div className="catchup-controls">
