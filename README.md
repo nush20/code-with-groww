@@ -4,10 +4,68 @@ MarketMemo is a smart Indian-market watchlist that helps users understand what c
 
 > MarketMemo is a prototype and an information product. It does not predict prices or provide investment advice.
 
+## Quick start
+
+### Requirements
+
+- Python 3.9 or newer
+- Node.js 20 or newer
+- pnpm
+- A current Upstox access token
+
+Clone the repository and install the backend:
+
+```bash
+git clone https://github.com/nush20/code-with-groww.git
+cd code-with-groww
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r backend/requirements.txt
+cp .env.example .env
+```
+
+Open `.env`, keep SQLite for the simplest local setup, and add the Upstox token:
+
+```env
+DATABASE_URL=sqlite:///./catchup.db
+UPSTOX_ACCESS_TOKEN=replace_with_your_current_token
+SUMMARY_PROVIDER=template
+GEMINI_API_KEY=
+GEMINI_MODEL_NAME=gemini-3.1-flash-lite
+```
+
+Start the backend:
+
+```bash
+source .venv/bin/activate
+python3 -m uvicorn app.main:app --reload --app-dir backend --port 8000
+```
+
+In a second terminal, install and start the frontend:
+
+```bash
+cd code-with-groww/frontend
+pnpm install
+cp .env.example .env
+pnpm dev
+```
+
+The frontend `.env` should contain:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+VITE_BASE_PATH=/
+```
+
+Open [http://localhost:5173](http://localhost:5173). Confirm that the backend is running at [http://localhost:8000/health](http://localhost:8000/health).
+
+If `pnpm` is unavailable, install Node.js LTS, reopen the terminal, and run `npm install --global pnpm`. Never commit `.env` or any real access token.
+
 ## What the product does
 
 - Sign up or log in to access a personal watchlist.
-- Search NSE equities by company name or symbol and add them to a persistent watchlist.
+- Search NSE equities by company name and add them to a persistent watchlist; symbols and Upstox instrument identifiers are resolved internally.
 - View the latest available price, daily change, high, low, previous close, and data freshness.
 - Add a personal alert while adding a stock:
   - a fixed price above or below the current price; or
@@ -17,12 +75,14 @@ MarketMemo is a smart Indian-market watchlist that helps users understand what c
 - Use **Catch-Up** to see only meaningful events since the last checkpoint the user explicitly acknowledged.
 - Run isolated historical replay examples without modifying live watchlists or user baselines.
 
-## Daily view and Catch-Up are different
+## Product experiences
 
-| View | Time window | Personal baseline | Purpose |
+MarketMemo uses one central smart watchlist rather than a separate Market Recap screen. The watchlist contains current prices and the latest-session overview; clicking a company opens its detailed market journey.
+
+| Experience | Time window | Personal baseline | Purpose |
 | --- | --- | --- | --- |
-| Watchlist daily overview | Latest available trading session | No | Summarizes how the user's watchlist behaved that day. |
-| Stock detail | Selected 1D/1W/2W/1M period | No | Shows the selected stock's complete market journey for that period. |
+| Watchlist | Current state and latest available session | No | Shows where watched stocks are now and what happened that day. |
+| Stock detail | Selected 1D/1W/2W/1M period | No | Shows the selected company's complete market journey for that period. |
 | Catch-Up | Since the user last clicked **Mark caught up** | Yes | Surfaces only events that meet the existing meaningful-change rules. |
 
 Opening the app, refreshing a page, or logging in does not move the Catch-Up checkpoint. Only **Mark caught up** updates it. If the user returns after several days, Catch-Up analyzes the available observations across that longer interval.
@@ -38,6 +98,8 @@ For every watchlist stock, the backend loads the user's saved baseline and norma
 The calculations are performed in application code, not by an LLM. Company news may be shown as **Related development**, but MarketMemo does not claim that an article caused a price move.
 
 If a user has no alert, Catch-Up can still surface a hidden journey or unusual movement. If nothing qualifies, it clearly reports that there were no meaningful changes.
+
+Catch-Up provides two simple filters: **All** and **My alerts**. Market movements and related developments remain visible inside the relevant update instead of creating additional filter clutter. A company appears only once even when multiple signals apply.
 
 ## Data and summary rules
 
