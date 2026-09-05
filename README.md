@@ -8,6 +8,32 @@ Traditional watchlists show where a stock is now. MarketMemo also captures what 
 
 MarketMemo is an information product and prototype. It does not predict prices, recommend trades, or provide investment advice.
 
+## Product Pitch
+
+MarketMemo is a smart Indian-market watchlist that helps people understand what changed without watching prices all day. Users build a personal NSE watchlist, set price or percentage alerts, and see live market snapshots, daily watchlist impact, source-linked company developments, and clear stock journeys. Catch-Up remembers the user’s last acknowledged checkpoint and surfaces important moves, reversals, unusual activity, and crossed alerts that a current price alone can hide. Upstox supplies market data and company news; deterministic code performs every financial calculation. Gemini may improve wording, but never decides signals. The result is a calm, personalized market brief—not another noisy trading terminal.
+
+---
+
+## Feature Overview
+
+* **Account-based persistence:** sign up, log in, log out, and keep each user’s watchlist, alerts, and Catch-Up checkpoint separate.
+* **Consumer-friendly stock search:** search NSE equities by company name or symbol; Upstox instrument keys remain internal.
+* **Persistent watchlist:** add and remove companies, with state stored in PostgreSQL in deployment and SQLite available locally.
+* **Market snapshots:** latest available price, daily percentage change, session high and low, previous close, and honest freshness labels.
+* **Watchlist-wide daily roundup:** breadth across watched stocks, the largest move, an equal-weight directional summary, and development count for the latest session.
+* **Daily activity card:** expands into source-backed developments for watchlist companies, grouped by sector to remain readable as the list grows.
+* **Stock detail:** click a watchlist company to inspect its Upstox candle journey over 1D, 1W, 2W, or 1M.
+* **Deterministic market recap:** period return, high, low, largest excursion, reversal/recovery, important moments, and a concise facts-based explanation.
+* **Personal alerts:** create an optional fixed-price alert or an “up/down by X%” alert while adding a company; saved alerts remain visible on the watchlist.
+* **Catch-Up with memory:** analyze only the interval since the user’s last explicitly acknowledged checkpoint.
+* **Hidden-journey detection:** preserve a meaningful move even if much of it disappears before the user returns.
+* **Volatility-normalized unusual movement:** compare an observed move with that stock’s own historical behavior rather than applying one percentage threshold to every company.
+* **Contextual company news:** show Upstox headline, timestamp, source, short summary, and source URL without claiming the news caused a price move.
+* **Quiet-state compression:** show each company once, combine applicable signals, and keep unchanged stocks from cluttering Catch-Up.
+* **Historical replay:** demonstrate real historical Upstox inputs through the same production calculation pipeline without changing live user state.
+* **Optional Gemini wording:** turn verified structured facts into concise language, with validation and deterministic fallback.
+* **Resilient provider handling:** quotes, analysis, and pages continue to degrade clearly when news, history, Gemini, or individual market requests are unavailable.
+
 ---
 
 ## The Problem
@@ -55,6 +81,17 @@ The watchlist shows:
 * relevant company developments
 
 Users can also create personal alerts based on a fixed price or percentage move.
+
+### Daily Watchlist Roundup
+
+The highlighted **Today in your watchlist** card summarizes the most recent complete trading session across only the companies the user follows. It shows:
+
+* how many watched stocks finished higher, lower, or unchanged
+* the equal-weight average move across the watchlist
+* the largest watchlist move
+* how many verified company developments were found
+
+Its **View today’s activity** control opens a compact feed of developments grouped by sector. Each item keeps its original source and link. This is a watchlist summary—not a portfolio return, index calculation, or claim of news causality.
 
 ### Stock Detail
 
@@ -324,10 +361,12 @@ python3 -m uvicorn app.main:app --reload --app-dir backend --port 8000
 
 ```bash
 cd frontend
-pnpm install
 cp .env.example .env
-pnpm dev
+npm install
+npm run dev
 ```
+
+If pnpm is already installed, `pnpm install` and `pnpm dev` work as well.
 
 Set:
 
@@ -352,7 +391,7 @@ Frontend:
 
 ```bash
 cd frontend
-pnpm build
+npm run build
 ```
 
 External providers are mocked in the normal automated test suite, so tests do not depend on live Upstox or Gemini availability.
