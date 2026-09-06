@@ -48,6 +48,11 @@ PUBLIC_PATHS = {"/health", "/auth/signup", "/auth/login", "/auth/demo"}
 
 @app.middleware("http")
 async def authenticated_session(request: Request, call_next):
+    # CORS preflight requests do not carry the user's session cookie. Let the
+    # CORS middleware validate them; authentication still applies to the
+    # subsequent GET/POST/DELETE request.
+    if request.method == "OPTIONS":
+        return await call_next(request)
     if request.url.path in PUBLIC_PATHS or request.url.path.startswith("/docs") or request.url.path.startswith("/openapi"):
         return await call_next(request)
     # Let FastAPI return its normal validation response without exposing any
