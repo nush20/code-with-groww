@@ -2,11 +2,60 @@
 
 > **Your watchlist remembers what happened while you were away.**
 
-MarketMemo is a smart Indian-market watchlist built for **Groww CODE 2026**. It combines real Upstox market data, persistent personal watchlists, price and percentage alerts, a watchlist-wide daily roundup, source-backed company developments, and a baseline-based **Catch-Up** experience.
-
-Traditional watchlists show where a stock is now. MarketMemo also preserves the important journey between visits: an alert crossed and later reversed, a move that was unusually large for that stock, or a company development published during the period.
+MarketMemo is a smart Indian-market watchlist built for **Groww CODE 2026**. It combines Upstox market data, personal alerts, company developments, and a baseline-based **Catch-Up** experience that preserves important activity between visits.
 
 MarketMemo is an informational prototype. It does not predict prices, recommend trades, or provide investment advice.
+
+---
+
+## The Core Problem
+
+A normal watchlist is only a snapshot.
+
+```text
+₹100  →  ₹110  →  ₹101
+LEFT      PEAK      NOW
+```
+
+If someone leaves at ₹100 and returns at ₹101, a normal watchlist shows only **+1%**.
+
+But the important part of the journey has disappeared: the stock rose **10%** while they were away and then gave almost all of it back.
+
+MarketMemo changes the question from:
+
+> **Where is the stock now?**
+
+to:
+
+> **What mattered while I was away?**
+
+---
+
+## The Idea
+
+### A watchlist should have memory.
+
+MarketMemo separates three questions:
+
+- **Market movement** — What actually happened while I wasn't watching?
+- **Personal relevance** — Did it cross a level or threshold I cared about?
+- **Company context** — What was happening at the company during that period?
+
+Catch-Up connects these without conflating them. Market movement comes from deterministic analysis, personal relevance comes from user-defined state, and company developments remain source-linked context rather than assumed causes.
+
+> **A normal watchlist remembers the endpoint. MarketMemo remembers the journey.**
+
+---
+
+## Why MarketMemo Stands Out
+
+| Dimension | How MarketMemo addresses it |
+|---|---|
+| **Engineering** | React/FastAPI/PostgreSQL, normalized Upstox data, deterministic calculations, caching, authentication, and tested detectors. |
+| **Product** | Turns a static watchlist into a memory of what happened between visits. |
+| **Reliability** | Handles stale or incomplete data, insufficient history, provider failures, empty news, ambiguous candles, and optional LLM failure. |
+| **Simplicity** | Separates providers, calculations, persistence, API contracts, and presentation without unnecessary services. |
+| **Originality** | Detects important journeys that disappear from the current price and combines them with personal relevance and source-backed context. |
 
 ---
 
@@ -19,7 +68,6 @@ MarketMemo is an informational prototype. It does not predict prices, recommend 
 The backend uses Render's free tier, so its first request after inactivity may take around a minute while the service wakes up.
 
 ---
-
 ## Quickstart — No Docker Required
 
 ### Terminal 1: backend
@@ -66,26 +114,6 @@ Before using live market features, place a valid Upstox access token in the root
 
 ---
 
-## The Core Problem
-
-A normal watchlist is only a snapshot.
-
-```text
-₹100  →  ₹110  →  ₹101
-left      peak      now
-```
-
-If someone leaves at ₹100 and returns at ₹101, the latest price shows only **+1%**. It hides the 10% rise and the reversal that happened in between.
-
-MarketMemo changes the question from:
-
-> Where is the stock now?
-
-to:
-
-> What mattered while I was away?
-
----
 
 ## Core Features
 
