@@ -20,12 +20,6 @@ The backend uses Render's free tier, so its first request after inactivity may t
 
 ---
 
-## Product Pitch
-
-MarketMemo is a smart Indian-market watchlist that helps people understand what changed without watching prices all day. Users build a personal NSE watchlist, set price or percentage alerts, and see live market snapshots, daily watchlist impact, source-linked company developments, and clear stock journeys. Catch-Up remembers the user's last acknowledged checkpoint and surfaces important moves, reversals, unusual activity, and crossed alerts that a current price alone can hide. Upstox supplies market data and company news; deterministic code performs every financial calculation. Gemini may improve wording, but never decides signals. The result is a calm, personalized market brief—not another noisy trading terminal.
-
----
-
 ## Quickstart — No Docker Required
 
 ### Terminal 1: backend
