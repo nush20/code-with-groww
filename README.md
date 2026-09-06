@@ -235,6 +235,108 @@ Generated text is validated. If Gemini times out, fails, or returns unsupported 
 
 ---
 
+## How the Analysis Works
+
+MarketMemo converts Upstox responses into normalized quotes and chronological OHLC candles before performing any analysis. The backend is the single source of truth for calculated values; the frontend only presents the returned facts.
+
+### Return and market range
+
+The selected period starts from the close immediately preceding that period. Its return is:
+
+```text
+period return (%) = (latest price − reference close) ÷ reference close × 100
+```
+
+The period high and low are taken directly from the normalized candle observations. For 1D, MarketMemo uses the latest trading session; 1W, 2W, and 1M use approximately 5, 10, and 22 real trading sessions respectively. If fewer sessions are available, the response is explicitly marked as partial.
+
+### Largest excursion
+
+MarketMemo calculates both the highest upward return and lowest downward return from the reference close. The move with the greater absolute size becomes the largest excursion:
+
+```text
+upward excursion (%)   = (period high − reference close) ÷ reference close × 100
+downward excursion (%) = (period low − reference close) ÷ reference close × 100
+```
+
+### Reversal or recovery
+
+For an upward excursion, reversal measures how much of the rise disappeared by the latest price:
+
+```text
+reversal (%) = (period high − latest price) ÷ (period high − reference close) × 100
+```
+
+For a downward excursion, recovery measures how much of the decline was regained:
+
+```text
+recovery (%) = (latest price − period low) ÷ (reference close − period low) × 100
+```
+
+The result is bounded between 0% and 100%. Crossing through the reference price therefore counts as a complete reversal or recovery.
+
+### Hidden journey
+
+Catch-Up checks candles strictly after the user's saved checkpoint. With the default policy, a journey is highlighted when:
+
+1. the largest excursion is at least **3%**, and
+2. the latest visible move is no more than **40%** of that excursion.
+
+These values are configuration, not generated decisions. They can be tuned with `HIDDEN_JOURNEY_MIN_EXCURSION` and `HIDDEN_JOURNEY_VISIBLE_RATIO` without changing the calculation.
+
+### Personal alert detection
+
+MarketMemo inspects every normalized candle in chronological order rather than checking only the latest price:
+
+- an **above** alert is reached when a candle high meets or exceeds its target
+- a **below** alert is reached when a candle low meets or falls below its target
+- a percentage alert is converted into a target price from the price recorded when the alert was created
+
+The event remains available even if a later candle crosses back. When OHLC data cannot prove which side moved first inside one candle, the detector waits for a later candle instead of inventing an ordering.
+
+### Volatility-normalized unusual movement
+
+MarketMemo calculates close-to-close percentage returns from completed daily candles before the Catch-Up window. Their sample standard deviation represents the stock's typical daily movement.
+
+```text
+expected window movement = daily return standard deviation × √(trading sessions)
+
+significance multiple = |observed excursion| ÷ expected window movement
+```
+
+By default, a move is unusual at **2.0×** expected movement and requires at least **15** historical returns. Otherwise, MarketMemo reports `NORMAL_RANGE` or `INSUFFICIENT_HISTORY`; it does not manufacture a score.
+
+### Daily watchlist roundup
+
+For the latest 1D session, each stock is compared with its own preceding close. MarketMemo then calculates:
+
+```text
+equal-weight average = sum of watched-stock returns ÷ analyzed stocks
+```
+
+Positive, negative, and zero returns produce the higher/lower/unchanged counts. The largest gainer and decliner are selected from those same verified rows. Because every company has equal weight, this is a watchlist direction indicator—not portfolio performance.
+
+### Company-development matching
+
+Upstox developments are normalized and matched to the relevant instrument and analysis window. For the 1D view, the article's publication date must equal the selected trading date in **Asia/Kolkata**. Catch-Up instead keeps developments published inside the personalized checkpoint interval. Headline, timestamp, publisher, summary, and source URL remain attached, but temporal overlap is never presented as proof of causation.
+
+### Summary generation
+
+The calculation pipeline produces structured facts first. Deterministic templates can always explain those facts. When Gemini is enabled, it receives only the verified values and may improve the wording. Its output is validated against the supplied facts and prohibited claims; invalid output or provider failure automatically falls back to the template.
+
+```text
+Upstox observations
+        ↓
+normalized quotes and candles
+        ↓
+deterministic calculations and detectors
+        ↓
+verified structured facts
+        ↓
+template or optional Gemini wording
+```
+
+---
+
 ## Daily Recap vs Catch-Up
 
 These features deliberately answer different questions.
